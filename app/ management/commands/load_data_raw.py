@@ -80,6 +80,7 @@ class Command(BaseCommand):
 
     def import_geolocations(self, path):
             df = pd.read_csv(path)
+            ligne_csv = df.shape[0]
             objs = [
                 Geolocation(
                     geolocation_zip_code_prefix=str(row.geolocation_zip_code_prefix).zfill(5),
@@ -90,11 +91,13 @@ class Command(BaseCommand):
                 )
                 for row in df.itertuples()
             ]
+
             Geolocation.objects.bulk_create(objs, ignore_conflicts=True)
-            self.stdout.write(self.style.SUCCESS(f"📍 Geolocations imported: {len(objs)}"))
+            self.stdout.write(self.style.SUCCESS(f"📍 Geolocations imported: {len(objs)}/{ligne_csv}"))
 
     def import_categories(self, path):
         df = pd.read_csv(path)
+        ligne_csv = df.shape[0]
         objs = [
             Category(
                 product_category_name=row.product_category_name,
@@ -103,11 +106,12 @@ class Command(BaseCommand):
             for row in df.itertuples()
         ]
         Category.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"📂 Categories imported: {len(objs)}"))
+        self.stdout.write(self.style.SUCCESS(f"📂 Categories imported: {len(objs)}/{ligne_csv}"))
 
 
     def import_products(self, path):
         df = pd.read_csv(path)
+        ligne_csv = df.shape[0]
         categories = {c.product_category_name: c for c in Category.objects.all()}
 
         objs = []
@@ -126,11 +130,12 @@ class Command(BaseCommand):
             ))
 
         Product.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"📦 Products imported: {len(objs)}"))
+        self.stdout.write(self.style.SUCCESS(f"📦 Products imported: {len(objs)}/{ligne_csv}"))
 
 
     def import_customers(self, path):
         df = pd.read_csv(path)
+        ligne_csv = df.shape[0]
         geos = {g.geolocation_zip_code_prefix: g for g in Geolocation.objects.all()}
 
         objs = []
@@ -147,11 +152,12 @@ class Command(BaseCommand):
             ))
 
         Customer.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"👤 Customers imported: {len(objs)}"))
+        self.stdout.write(self.style.SUCCESS(f"👤 Customers imported: {len(objs)}/{ligne_csv}"))
 
 
     def import_sellers(self, path):
         df = pd.read_csv(path)
+        ligne_csv = df.shape[0]
         geos = {g.geolocation_zip_code_prefix: g for g in Geolocation.objects.all()}
 
         objs = []
@@ -168,11 +174,12 @@ class Command(BaseCommand):
             ))
 
         Seller.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"🏪 Sellers imported: {len(objs)}"))
+        self.stdout.write(self.style.SUCCESS(f"🏪 Sellers imported: {len(objs)}/{ligne_csv}"))
 
 
     def import_orders(self, path):
         df = pd.read_csv(path)
+        ligne_csv = df.shape[0]
         customers = {c.customer_id: c for c in Customer.objects.all()}
 
         objs = []
@@ -190,12 +197,13 @@ class Command(BaseCommand):
             ))
 
         Order.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"🧾 Orders imported: {len(objs)}"))
+        self.stdout.write(self.style.SUCCESS(f"🧾 Orders imported: {len(objs)}/{ligne_csv}"))
 
 
 
     def import_order_items(self, path):
         df = pd.read_csv(path)
+        ligne_csv = df.shape[0]
         orders = {o.order_id: o for o in Order.objects.all()}
         products = {p.product_id: p for p in Product.objects.all()}
         sellers = {s.seller_id: s for s in Seller.objects.all()}
@@ -213,12 +221,13 @@ class Command(BaseCommand):
             ))
 
         OrderItem.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"📦 Order Items imported: {len(objs)}"))
+        self.stdout.write(self.style.SUCCESS(f"📦 Order Items imported: {len(objs)}/{ligne_csv}"))
 
 
 
     def import_payments(self, path):
         df = pd.read_csv(path)
+        ligne_csv = df.shape[0]
         orders = {o.order_id: o for o in Order.objects.all()}
 
         objs = []
@@ -231,11 +240,12 @@ class Command(BaseCommand):
                 payment_value=row.payment_value,
             ))
             Payment.objects.bulk_create(objs, ignore_conflicts=True)
-            self.stdout.write(self.style.SUCCESS(f"📦 Order Items imported: {len(objs)}"))
+            self.stdout.write(self.style.SUCCESS(f"📦 Order Items imported: {len(objs)}/{ligne_csv}"))
 
 
     def review_import(self, path):
         df = pd.read_csv(path)
+        ligne_csv = df.shape[0]
         orders = {o.order_id: o for o in Order.objects.all()}
 
         objs =[]
@@ -249,3 +259,5 @@ class Command(BaseCommand):
                 review_creation_date=row.review_creation_date,
                 review_answer_timestamp=row.review_answer_timestamp
             ))
+            Review.objects.bulk_create(objs, ignore_conflicts=True)
+            self.stdout.write(self.style.SUCCESS(f"⭐ Reviews imported: {len(objs)}/{ligne_csv}"))
