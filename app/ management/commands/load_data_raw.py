@@ -3,55 +3,58 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from app.models import Geolocation, Customer, Order, OrderItem, Product, Category,Seller,Payment,Review,CartItem,Cart
+from faker import Faker
+
+
+fake = Faker()
 
 class Command(BaseCommand):
     help = "Import raw CSV files into PostgreSQL (Django ORM)"
 
     def add_arguments(self, parser):
-        def add_arguments(self, parser):
             parser.add_argument('--geolocations', type=str,
                                 default='data/raw/olist_geolocation_dataset.csv',
                                 help='Path to geolocations CSV file',
-                                required=True)
+                                required=False)
 
             parser.add_argument('--customers', type=str,
                                 default='data/raw/olist_customers_dataset_enriched.csv',
-                                required=True,
+                                required=False,
                                 help='Path to customers CSV file')
 
             parser.add_argument('--orders', type=str,
                                 default='data/raw/olist_orders_dataset.csv',
-                                required=True,
+                                required=False,
                                 help='Path to orders CSV file')
 
             parser.add_argument('--order_items', type=str,
                                 default='data/raw/olist_order_items_dataset.csv',
-                                required=True,
+                                required=False,
                                 help='Path to order items CSV file')
 
             parser.add_argument('--products', type=str,
                                 default='data/raw/olist_products_dataset.csv',
-                                required=True,
+                                required=False,
                                 help='Path to products CSV file')
 
             parser.add_argument('--category', type=str,
                                 default='data/raw/category_translations.csv',
-                                required=True,
+                                required=False,
                                 help='Path to category translation CSV file')
 
             parser.add_argument('--seller', type=str,
                                 default='data/raw/olist_sellers_dataset_enriched.csv',
-                                required=True,
+                                required=False,
                                 help='Path to sellers CSV file')
 
             parser.add_argument('--payment', type=str,
                                 default='data/raw/olist_order_payments_dataset.csv',
-                                required=True,
+                                required=False,
                                 help='Path to payments CSV file')
 
             parser.add_argument('--review', type=str,
                                 default='data/raw/olist_order_reviews_dataset.csv',
-                                required=True,
+                                required=False,
                                 help='Path to reviews CSV file')
 
             """parser.add_argument('--cart_items', type=str,
@@ -149,6 +152,7 @@ class Command(BaseCommand):
                 customer_city=row.customer_city,
                 customer_state=row.customer_state,
                 customer_address=row.address,
+                customer_phone_number=fake.phone_number(),
             ))
 
         Customer.objects.bulk_create(objs, ignore_conflicts=True)
@@ -168,6 +172,7 @@ class Command(BaseCommand):
                 seller_first_name=row.seller_first_name,
                 seller_zip_code_prefix=geo,
                 seller_last_name=row.seller_last_name,
+                seller_phone_number=fake.phone_number(),
                 seller_city=row.seller_city,
                 seller_state=row.seller_state,
                 seller_address=row.seller_address
@@ -239,8 +244,8 @@ class Command(BaseCommand):
                 payment_installments=row.payment_installments,
                 payment_value=row.payment_value,
             ))
-            Payment.objects.bulk_create(objs, ignore_conflicts=True)
-            self.stdout.write(self.style.SUCCESS(f"📦 Order Items imported: {len(objs)}/{ligne_csv}"))
+        Payment.objects.bulk_create(objs, ignore_conflicts=True)
+        self.stdout.write(self.style.SUCCESS(f" 💳 Payments imported: {len(objs)}/{ligne_csv}"))
 
 
     def review_import(self, path):
@@ -251,7 +256,7 @@ class Command(BaseCommand):
         objs =[]
         for row in df.itertuples():
             objs.append(Review(
-                orders=orders.get(row.order_id),
+                order=orders.get(row.order_id),
                 review_id=row.review_id,
                 review_score=row.review_score,
                 review_comment_title=row.review_comment_title,
@@ -259,5 +264,5 @@ class Command(BaseCommand):
                 review_creation_date=row.review_creation_date,
                 review_answer_timestamp=row.review_answer_timestamp
             ))
-            Review.objects.bulk_create(objs, ignore_conflicts=True)
-            self.stdout.write(self.style.SUCCESS(f"⭐ Reviews imported: {len(objs)}/{ligne_csv}"))
+        Review.objects.bulk_create(objs, ignore_conflicts=True)
+        self.stdout.write(self.style.SUCCESS(f"⭐ Reviews imported: {len(objs)}/{ligne_csv}"))
