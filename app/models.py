@@ -71,6 +71,7 @@ class Customer(models.Model):
     customer_state = models.CharField(max_length=2, default="",db_comment="customer state abbreviation.")
     customer_phone_number= models.CharField(max_length=20,default="", db_comment="customer phone number digits only.")
     customer_address = models.CharField(max_length=150,default="", db_comment="customer address.")
+    customer_email = models.EmailField(max_length=50,default="", db_comment="customer email address.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     vector = SearchVectorField(verbose_name=['customer_first_name','customer_last_name'], null=True)
@@ -89,7 +90,6 @@ class Seller(models.Model):
         db_comment="Unique identifier for the seller"
     )
 
-
     seller_first_name= models.CharField(max_length=100, default="",db_comment="seller first name.")
     seller_last_name= models.CharField(max_length=100,default="", db_comment="seller last name.")
     seller_zip_code_prefix = models.ForeignKey(Geolocation,on_delete=models.CASCADE, related_name="Sellers")
@@ -97,6 +97,7 @@ class Seller(models.Model):
     seller_state = models.CharField(max_length=2,default="", db_comment="seller state abbreviation.")
     seller_phone_number= models.CharField(max_length=20,default="", db_comment="seller phone number digits only.")
     seller_address = models.CharField(max_length=150,default="", db_comment="seller address.")
+    seller_email = models.EmailField(max_length=50,default="", db_comment="seller email address.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
