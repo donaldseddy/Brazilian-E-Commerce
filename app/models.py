@@ -4,9 +4,37 @@ import uuid
 from django.contrib.gis.db.models import PointField
 from django.contrib.gis.geos import Point
 from django.contrib.postgres.search import SearchVectorField
-
+from django.contrib.auth.models import AbstractUser
 
 # Create your models here.
+
+class User(AbstractUser):
+    ROLE_CUSTOMER = "customer"
+    ROLE_SELLER   = "seller"
+    ROLE_CHOICES  = [(ROLE_CUSTOMER, "Customer"), (ROLE_SELLER, "Seller")]
+
+    role         = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    groups = models.ManyToManyField(
+        "auth.Group",
+        blank=True,
+        related_name="app_user_set",  # ← nom unique
+        verbose_name="groups",
+    )
+    user_permissions = models.ManyToManyField(
+        "auth.Permission",
+        blank=True,
+        related_name="app_user_set",  # ← nom unique
+        verbose_name="user permissions",
+    )
+
+    @property
+    def is_customer(self):
+        return self.role == self.ROLE_CUSTOMER
+
+    @property
+    def is_seller(self):
+        return self.role == self.ROLE_SELLER
+
 
 class Geolocation(models.Model):
     geolocation_zip_code_prefix = models.CharField(
@@ -64,14 +92,18 @@ class Customer(models.Model):
         db_comment="Unique identifier for the customer"
     )
 
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="customer_profile",null=True,blank=True
+    )
+
     customer_last_name = models.CharField(max_length=50, db_comment="customer last name.",default="")
     customer_first_name= models.CharField(max_length=50, db_comment="customer first name.",default="")
     customer_zip_code_prefix = models.ForeignKey(Geolocation,on_delete=models.CASCADE, related_name="customers")
     customer_city = models.CharField(max_length=100, default="",db_comment="customer city name.")
     customer_state = models.CharField(max_length=2, default="",db_comment="customer state abbreviation.")
-    customer_phone_number= models.CharField(max_length=20,default="", db_comment="customer phone number digits only.")
+    customer_phone_number= models.CharField(max_length=50,default="", db_comment="customer phone number digits only.")
     customer_address = models.CharField(max_length=150,default="", db_comment="customer address.")
-    customer_email = models.EmailField(max_length=50,default="", db_comment="customer email address.")
+    customer_email = models.EmailField(max_length=100,default="", db_comment="customer email address.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     vector = SearchVectorField(verbose_name=['customer_first_name','customer_last_name'], null=True)
@@ -89,13 +121,14 @@ class Seller(models.Model):
         editable=False,
         db_comment="Unique identifier for the seller"
     )
-
+    user = models.OneToOneField(User, on_delete=models.CASCADE,
+                                related_name="seller_profile",null=True,blank=True)
     seller_first_name= models.CharField(max_length=100, default="",db_comment="seller first name.")
     seller_last_name= models.CharField(max_length=100,default="", db_comment="seller last name.")
     seller_zip_code_prefix = models.ForeignKey(Geolocation,on_delete=models.CASCADE, related_name="Sellers")
     seller_city = models.CharField(max_length=100,default="", db_comment="seller city name.")
     seller_state = models.CharField(max_length=2,default="", db_comment="seller state abbreviation.")
-    seller_phone_number= models.CharField(max_length=20,default="", db_comment="seller phone number digits only.")
+    seller_phone_number= models.CharField(max_length=100,default="", db_comment="seller phone number digits only.")
     seller_address = models.CharField(max_length=150,default="", db_comment="seller address.")
     seller_email = models.EmailField(max_length=50,default="", db_comment="seller email address.")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -147,7 +180,7 @@ class Product(models.Model):
     product_description = models.IntegerField(db_comment="number of characters extracted from the product description.")
     product_photo = models.IntegerField(db_comment="number of product published photos")
     product_weight_g = models.IntegerField(db_comment="product weight in grams")
-    product_length_cm = models.IntegerField(db_comment="product length in centimeters")
+    product_length_cm = models.IntegerField(null=True, blank=True,db_comment="product length in centimeters")
     product_height_cm = models.IntegerField(db_comment="product height in centimeters")
     product_width_cm = models.IntegerField(db_comment="product width in centimeters")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -218,11 +251,17 @@ class Payment(models.Model):
     payment_installments= models.IntegerField(null=True, blank=True, db_comment="Number of installments chosen by the customer")
     payment_value= models.DecimalField(max_digits=10, decimal_places=2, db_comment="transaction value")
 
+
+
     class Meta:
         db_table = "payment"
         verbose_name_plural = "Payments"
-
-
+        constraints = [
+            models.UniqueConstraint(
+                fields=['order', 'payment_sequential'],
+                name='unique_order_payment_sequence'
+            )
+        ]
 
 
 class Review(models.Model):

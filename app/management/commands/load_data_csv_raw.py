@@ -7,7 +7,7 @@ from tqdm import tqdm
 from app.models import Geolocation, Customer, Order, OrderItem, Product, Category,Seller,Payment,Review,CartItem,Cart
 from faker import Faker
 
-from utils import *
+from utils import PATH_DATA, parse_datetime_column
 fake = Faker()
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
             parser.add_argument('--geolocations', type=str,
-                                default=PATH_DATA + 'raw/geolocation.csv',
+                                default=PATH_DATA + 'raw/olist_geolocation_dataset.csv',
                                 help='Path to geolocations CSV file',
                                 required=False)
 
@@ -42,7 +42,7 @@ class Command(BaseCommand):
                                 help='Path to products CSV file')
 
             parser.add_argument('--category', type=str,
-                                default=PATH_DATA +'raw/category_translations.csv',
+                                default=PATH_DATA +'raw/product_category_name_translation.csv',
                                 required=False,
                                 help='Path to category translation CSV file')
 
@@ -61,19 +61,13 @@ class Command(BaseCommand):
                                 required=False,
                                 help='Path to reviews CSV file')
 
-            """parser.add_argument('--cart_items', type=str,
-                                default='data/raw/cart_items.csv',
-                                help='Path to cart items CSV file')
-            parser.add_argument('--cart', type=str,
-                                default='data/raw/cart.csv',
-                                help='Path to cart CSV file')"""
 
 
     @transaction.atomic
     def handle(self, *args, **options):
-        logger.info("🚀 Starting Olist import...")
+        logger.info(" Starting Olist import...")
         try:
-            self.stdout.write(self.style.WARNING("🚀 Starting Olist import..."))
+            self.stdout.write(self.style.WARNING(" Starting Olist import..."))
             self.import_geolocations(options['geolocations'])
             self.import_categories(options['category'])
             self.import_products(options['products'])
@@ -85,10 +79,10 @@ class Command(BaseCommand):
             self.review_import(options['review'])
 
         except Exception as e:
-            logger.error(f"❌ IMPORT FAILED: {e}")
+            logger.error(f" IMPORT FAILED: {e}")
             raise
 
-        logger.info("🎉 Import completed successfully!")
+        logger.info(" Import completed successfully!")
 
     def import_geolocations(self, path):
             df = pd.read_csv(path)
@@ -108,7 +102,7 @@ class Command(BaseCommand):
                     continue
 
             Geolocation.objects.bulk_create(objs, ignore_conflicts=True)
-            self.stdout.write(self.style.SUCCESS(f"📍 Geolocations imported: {len(objs)}/{ligne_csv}"))
+            self.stdout.write(self.style.SUCCESS(f" Geolocations imported: {len(objs)}/{ligne_csv}"))
 
 
     def import_categories(self, path):
@@ -125,13 +119,31 @@ class Command(BaseCommand):
                 logger.error(f"Error importing category {row.product_category_name}: {e}")
                 continue
         Category.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"📂 Categories imported: {len(objs)}/{ligne_csv}"))
+        self.stdout.write(self.style.SUCCESS(f" Categories imported: {len(objs)}/{ligne_csv}"))
 
 
     def import_products(self, path):
         df = pd.read_csv(path)
+
+        numeric_cols = [
+            "product_name_lenght",
+            "product_description_lenght",
+            "product_photos_qty",
+            "product_weight_g",
+            "product_length_cm",
+            "product_height_cm",
+            "product_width_cm",
+        ]
+
+        for col in numeric_cols:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        df[numeric_cols] = df[numeric_cols].where(
+            pd.notnull(df[numeric_cols]), None
+        )
+
         ligne_csv = df.shape[0]
-        categories = {c.product_category_name: c for c in Category.objects.all()}
+        categories = {c.product_category_name: c for c in Category.objects.only("product_category_name")}
 
         objs = []
         for row in tqdm( df.itertuples(), total=ligne_csv, desc="Importing Products"):
@@ -152,13 +164,13 @@ class Command(BaseCommand):
                 logger.error(f"Error importing product {row.product_id}: {e}")
                 continue
         Product.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"📦 Products imported: {len(objs)}/{ligne_csv}"))
+        self.stdout.write(self.style.SUCCESS(f" Products imported: {len(objs)}/{ligne_csv}"))
 
 
     def import_customers(self, path):
         df = pd.read_csv(path)
         ligne_csv = df.shape[0]
-        geos = {g.geolocation_zip_code_prefix: g for g in Geolocation.objects.all()}
+        geos = {g.geolocation_zip_code_prefix: g for g in Geolocation.objects.only("geolocation_zip_code_prefix")}
 
         objs = []
         for row in tqdm( df.itertuples(), total=ligne_csv, desc="Importing Customers"):
@@ -171,7 +183,7 @@ class Command(BaseCommand):
                     customer_zip_code_prefix=geo,
                     customer_city=row.customer_city,
                     customer_state=row.customer_state,
-                    customer_address=row.address,
+                    customer_address=row.customer_address,
                     customer_email=fake.email(),
                     customer_phone_number=fake.phone_number(),
                 ))
@@ -185,7 +197,7 @@ class Command(BaseCommand):
     def import_sellers(self, path):
         df = pd.read_csv(path)
         ligne_csv = df.shape[0]
-        geos = {g.geolocation_zip_code_prefix: g for g in Geolocation.objects.all()}
+        geos = {g.geolocation_zip_code_prefix: g for g in Geolocation.objects.only("geolocation_zip_code_prefix")}
 
         objs = []
         for row in tqdm( df.itertuples(), total=ligne_csv, desc="Importing Sellers"):
@@ -200,19 +212,25 @@ class Command(BaseCommand):
                     seller_city=row.seller_city,
                     seller_email=fake.email(),
                     seller_state=row.seller_state,
-                    seller_address=row.seller_address
+                    seller_address=row.seller_full_address
                 ))
             except Exception as e:
                 logger.error(f"Error importing seller {row.seller_id}: {e}")
                 continue
         Seller.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"🏪 Sellers imported: {len(objs)}/{ligne_csv}"))
+        self.stdout.write(self.style.SUCCESS(f" Sellers imported: {len(objs)}/{ligne_csv}"))
 
 
     def import_orders(self, path):
         df = pd.read_csv(path)
+        parse_datetime_column(df, 'order_purchase_timestamp')
+        parse_datetime_column(df, 'order_approved_at')
+        parse_datetime_column(df, 'order_delivered_carrier_date')
+        parse_datetime_column(df, 'order_delivered_customer_date')
+        parse_datetime_column(df, 'order_estimated_delivery_date')
+
         ligne_csv = df.shape[0]
-        customers = {c.customer_id: c for c in Customer.objects.all()}
+        customers = {c.customer_id: c for c in Customer.objects.only("customer_id")}
 
         objs = []
         for row in tqdm( df.itertuples(), total=ligne_csv, desc="Importing Orders"):
@@ -241,34 +259,34 @@ class Command(BaseCommand):
     def import_order_items(self, path):
         df = pd.read_csv(path)
         ligne_csv = df.shape[0]
-        orders = {o.order_id: o for o in Order.objects.all()}
-        products = {p.product_id: p for p in Product.objects.all()}
-        sellers = {s.seller_id: s for s in Seller.objects.all()}
+        orders = {o.order_id: o for o in Order.objects.only("order_id")}
+        products = {p.product_id: p for p in Product.objects.only("product_id")}
+        sellers = {s.seller_id: s for s in Seller.objects.only("seller_id")}
 
         objs = []
         for row in tqdm(df.itertuples(),total=ligne_csv,desc="Importing Order Items"):
             try:
                 objs.append(OrderItem(
+                    order_item_id=row.order_item_id,
                     order=orders.get(row.order_id),
                     product=products.get(row.product_id),
                     seller=sellers.get(row.seller_id),
-                    order_item_sequence_number=row.order_item_id,
                     order_item_price=row.price,
                     order_item_freight_value=row.freight_value,
                     shipping_limit_date=row.shipping_limit_date
                 ))
             except Exception as e:
-                logger.error(f"Error importing order item for order {row.order_id}: {e}")
+                logger.error(f"Error importing order item for order {row.order_item_id}: {e}")
                 continue
         OrderItem.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"📦 Order Items imported: {len(objs)}/{ligne_csv}"))
+        self.stdout.write(self.style.SUCCESS(f" Order Items imported: {len(objs)}/{ligne_csv}"))
 
 
 
     def import_payments(self, path):
         df = pd.read_csv(path)
         ligne_csv = df.shape[0]
-        orders = {o.order_id: o for o in Order.objects.all()}
+        orders = {o.order_id: o for o in Order.objects.only("order_id")}
 
         objs = []
         for row in df.itertuples():
@@ -281,16 +299,16 @@ class Command(BaseCommand):
                     payment_value=row.payment_value,
                 ))
             except Exception as e:
-                logger.error(f"Error importing payment for order {row.order_id}: {e}")
+                logger.error(f"Error importing payment for order : {e}")
                 continue
         Payment.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f" 💳 Payments imported: {len(objs)}/{ligne_csv}"))
+        self.stdout.write(self.style.SUCCESS(f" Payments imported: {len(objs)}/{ligne_csv}"))
 
 
     def review_import(self, path):
         df = pd.read_csv(path)
         ligne_csv = df.shape[0]
-        orders = {o.order_id: o for o in Order.objects.all()}
+        orders = {o.order_id: o for o in Order.objects.only("order_id")}
         objs =[]
         for row in df.itertuples():
             try:
@@ -304,7 +322,7 @@ class Command(BaseCommand):
                     review_answer_timestamp=row.review_answer_timestamp
                 ))
             except Exception as e:
-                logger.error(f"Error importing review for order {row.order_id}: {e}")
+                logger.error(f"Error importing review for order {row.review_id}: {e}")
                 continue
         Review.objects.bulk_create(objs, ignore_conflicts=True)
-        self.stdout.write(self.style.SUCCESS(f"⭐ Reviews imported: {len(objs)}/{ligne_csv}"))
+        self.stdout.write(self.style.SUCCESS(f" Reviews imported: {len(objs)}/{ligne_csv}"))
