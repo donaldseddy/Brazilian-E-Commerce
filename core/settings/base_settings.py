@@ -49,7 +49,7 @@ except FileNotFoundError:
 SECRET_KEY = 'django-insecure-)3_i)$4sd!ly2koa!bmvt6n_s_5^bw@5_=(2oot-vq3!zv&o-r'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+
 
 ALLOWED_HOSTS = []
 
@@ -57,6 +57,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -86,6 +87,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -93,7 +95,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'allauth.account.middleware.AccountMiddleware',
+    'allauth.account.middleware.AccountMiddleware'
+
 
 ]
 
@@ -177,7 +180,6 @@ LOGGING = {
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_AGE = 3600          # 1h
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SECURE = True       # HTTPS uniquement en prod
 
 # ── JWT ──────────────────────────────────────────────────────────────────────
 from datetime import timedelta
@@ -228,3 +230,6 @@ ACCOUNT_AUTHENTICATION_METHOD = "email"
 # ✅ Nouvelle syntaxe allauth
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+
+CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
+CORS_ALLOW_CREDENTIALS = True

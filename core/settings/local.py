@@ -2,7 +2,6 @@ from .base_settings import *
 from .base_settings import config
 
 DEBUG = True
-ALLOWED_HOSTS = ['localhost']
 
 DATABASES = {
     
@@ -15,3 +14,7 @@ DATABASES = {
         'PORT': '5432',
     }
 }
+
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE    = False

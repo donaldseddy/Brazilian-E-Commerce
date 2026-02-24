@@ -15,3 +15,5 @@ DATABASES = {
     
     )
 }
+
+SESSION_COOKIE_SECURE = True

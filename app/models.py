@@ -8,32 +8,9 @@ from django.contrib.auth.models import AbstractUser
 
 # Create your models here.
 
-class User(AbstractUser):
-    ROLE_CUSTOMER = "customer"
-    ROLE_SELLER   = "seller"
-    ROLE_CHOICES  = [(ROLE_CUSTOMER, "Customer"), (ROLE_SELLER, "Seller")]
 
-    role         = models.CharField(max_length=10, choices=ROLE_CHOICES)
-    groups = models.ManyToManyField(
-        "auth.Group",
-        blank=True,
-        related_name="app_user_set",  # ← nom unique
-        verbose_name="groups",
-    )
-    user_permissions = models.ManyToManyField(
-        "auth.Permission",
-        blank=True,
-        related_name="app_user_set",  # ← nom unique
-        verbose_name="user permissions",
-    )
 
-    @property
-    def is_customer(self):
-        return self.role == self.ROLE_CUSTOMER
 
-    @property
-    def is_seller(self):
-        return self.role == self.ROLE_SELLER
 
 
 class Geolocation(models.Model):
@@ -82,32 +59,62 @@ class Geolocation(models.Model):
         ordering = ["geolocation_zip_code_prefix"]
 
 
+class User(AbstractUser):
+    ROLE_CUSTOMER = "customer"
+    ROLE_SELLER   = "seller"
+    ROLE_CHOICES  = [(ROLE_CUSTOMER, "Customer"), (ROLE_SELLER, "Seller")]
+
+    role         = models.CharField(max_length=10, choices=ROLE_CHOICES, default=ROLE_CUSTOMER)
+    last_name    = models.CharField(max_length=50, default="", db_comment="Last name")
+    first_name   = models.CharField(max_length=50, default="", db_comment="First name")
+
+    zip_code_prefix = models.ForeignKey(
+        Geolocation, on_delete=models.SET_NULL,
+        related_name="users", null=True, blank=True
+    )
+    city         = models.CharField(max_length=100, default="")
+    state        = models.CharField(max_length=2, default="")
+    phone_number = models.CharField(max_length=50, default="")
+    address      = models.CharField(max_length=150, default="")
+    email        = models.EmailField(max_length=100, unique=True, default="")
+
+    is_active    = models.BooleanField(default=True)
+    is_staff     = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
+    date_joined  = models.DateTimeField(auto_now_add=True)
+
+    groups = models.ManyToManyField(
+        "auth.Group", blank=True,
+        related_name="app_user_set", verbose_name="groups",
+    )
+    user_permissions = models.ManyToManyField(
+        "auth.Permission", blank=True,
+        related_name="app_user_set", verbose_name="user permissions",
+    )
+
+    USERNAME_FIELD  = "email"       # login par email
+    REQUIRED_FIELDS = ["username"]
+
+    @property
+    def is_customer(self):
+        return self.role == self.ROLE_CUSTOMER
+
+    @property
+    def is_seller(self):
+        return self.role == self.ROLE_SELLER
+
 
 class Customer(models.Model):
-
     customer_id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False,
+        primary_key=True, default=uuid.uuid4, editable=False,
         db_comment="Unique identifier for the customer"
     )
-
-    user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="customer_profile",null=True,blank=True
+    user   = models.OneToOneField(
+        User, on_delete=models.CASCADE,
+        related_name="customer_profile", null=True, blank=True
     )
-
-    customer_last_name = models.CharField(max_length=50, db_comment="customer last name.",default="")
-    customer_first_name= models.CharField(max_length=50, db_comment="customer first name.",default="")
-    customer_zip_code_prefix = models.ForeignKey(Geolocation,on_delete=models.CASCADE, related_name="customers")
-    customer_city = models.CharField(max_length=100, default="",db_comment="customer city name.")
-    customer_state = models.CharField(max_length=2, default="",db_comment="customer state abbreviation.")
-    customer_phone_number= models.CharField(max_length=50,default="", db_comment="customer phone number digits only.")
-    customer_address = models.CharField(max_length=150,default="", db_comment="customer address.")
-    customer_email = models.EmailField(max_length=100,default="", db_comment="customer email address.")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    vector = SearchVectorField(verbose_name=['customer_first_name','customer_last_name'], null=True)
-
+    # FIX : verbose_name doit être une str, pas une liste
+    vector = SearchVectorField(verbose_name="customer_name", null=True)
 
     class Meta:
         db_table = "customer"
@@ -115,30 +122,19 @@ class Customer(models.Model):
 
 
 class Seller(models.Model):
-    seller_id =  models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False,
+    seller_id = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False,
         db_comment="Unique identifier for the seller"
-    )
-    user = models.OneToOneField(User, on_delete=models.CASCADE,
-                                related_name="seller_profile",null=True,blank=True)
-    seller_first_name= models.CharField(max_length=100, default="",db_comment="seller first name.")
-    seller_last_name= models.CharField(max_length=100,default="", db_comment="seller last name.")
-    seller_zip_code_prefix = models.ForeignKey(Geolocation,on_delete=models.CASCADE, related_name="Sellers")
-    seller_city = models.CharField(max_length=100,default="", db_comment="seller city name.")
-    seller_state = models.CharField(max_length=2,default="", db_comment="seller state abbreviation.")
-    seller_phone_number= models.CharField(max_length=100,default="", db_comment="seller phone number digits only.")
-    seller_address = models.CharField(max_length=150,default="", db_comment="seller address.")
-    seller_email = models.EmailField(max_length=50,default="", db_comment="seller email address.")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
+    )
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE,
+        related_name="seller_profile", null=True, blank=True
+    )
 
     class Meta:
         db_table = "seller"
         verbose_name_plural = "Sellers"
-
 
 
 
