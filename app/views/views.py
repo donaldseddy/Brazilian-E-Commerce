@@ -4,8 +4,8 @@ from rest_framework import status, permissions
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate, login, logout
 
-from .serializers import CustomerRegisterSerializer, SellerRegisterSerializer
-from .models import User
+from app.serializers import CustomerRegisterSerializer, SellerRegisterSerializer
+from app.models import User
 
 
 def get_tokens(user):

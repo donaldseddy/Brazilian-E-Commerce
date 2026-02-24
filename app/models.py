@@ -72,16 +72,17 @@ class User(AbstractUser):
         Geolocation, on_delete=models.SET_NULL,
         related_name="users", null=True, blank=True
     )
-    city         = models.CharField(max_length=100, default="")
-    state        = models.CharField(max_length=2, default="")
-    phone_number = models.CharField(max_length=50, default="")
-    address      = models.CharField(max_length=150, default="")
-    email        = models.EmailField(max_length=100, unique=True, default="")
+    city         = models.CharField(max_length=100, default="",db_comment="City name")
+    state        = models.CharField(max_length=2, default="",db_comment="State abbreviation")
+    phone_number = models.CharField(max_length=50, default="",db_comment="Phone number")
+    address      = models.CharField(max_length=150, default="",db_comment="Address")
+    geolocalization = PointField(srid=4326, geography=True,null=True,db_comment="Geolocalization point")
+    email        = models.EmailField(max_length=100, unique=True, default="",db_comment="Email address")
 
-    is_active    = models.BooleanField(default=True)
-    is_staff     = models.BooleanField(default=False)
-    is_superuser = models.BooleanField(default=False)
-    date_joined  = models.DateTimeField(auto_now_add=True)
+    is_active    = models.BooleanField(default=True,db_comment="User is active or not")
+    is_staff     = models.BooleanField(default=False,db_comment="User is staff or not")
+    is_superuser = models.BooleanField(default=False,db_comment="User is superuser or not")
+    date_joined  = models.DateTimeField(auto_now_add=True,db_comment="Date joined")
 
     groups = models.ManyToManyField(
         "auth.Group", blank=True,
