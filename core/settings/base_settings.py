@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 from decouple import Config, RepositoryEnv, config as conf
 from pathlib import Path
+from utils import PATH_DATA
+
 
 
 try:
@@ -53,7 +55,11 @@ SECRET_KEY = 'django-insecure-)3_i)$4sd!ly2koa!bmvt6n_s_5^bw@5_=(2oot-vq3!zv&o-r
 
 ALLOWED_HOSTS = []
 
+MEDIA_URL  = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 # Application definition
 
 INSTALLED_APPS = [
@@ -70,6 +76,9 @@ INSTALLED_APPS = [
 
     # Apps perso
     'app',
+
+    # Storages
+    "storages",
 
     # REST
     "rest_framework",

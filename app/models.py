@@ -5,7 +5,19 @@ from django.contrib.gis.db.models import PointField
 from django.contrib.gis.geos import Point
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.auth.models import AbstractUser
+from django.utils.text import slugify
+import os
 
+
+
+def product_image_path(instance, filename):
+    """
+    Génère un chemin propre : products/<product_id>/<slug_filename>
+    Ex: products/abc123/photo-1.jpg
+    """
+    ext      = filename.split(".")[-1].lower()
+    basename = slugify(os.path.splitext(filename)[0])
+    return f"products/{instance.product.product_id}/{basename}.{ext}"
 # Create your models here.
 
 
@@ -172,6 +184,7 @@ class Product(models.Model):
         Category, on_delete=models.CASCADE, related_name="products"
     )
 
+    product_name=models.CharField(max_length=120, blank=True)
     product_name_length = models.PositiveIntegerField(null=True,
         blank=True)
     product_description = models.IntegerField(db_comment="number of characters extracted from the product description.")
@@ -187,6 +200,38 @@ class Product(models.Model):
         db_table = "product"
         verbose_name_plural = "Products"
 
+
+
+class ProductImage(models.Model):
+    image_id   = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product    = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="images"
+    )
+    image      = models.ImageField(upload_to=product_image_path)
+    is_primary = models.BooleanField(default=False, db_comment="Image principale du produit")
+    alt_text   = models.CharField(max_length=200, blank=True, default="")
+    order      = models.PositiveIntegerField(default=0, db_comment="Ordre d'affichage")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table  = "product_image"
+        ordering  = ["order", "created_at"]
+        verbose_name_plural = "Product Images"
+
+    def save(self, *args, **kwargs):
+        # Si marquée comme principale, retirer les autres
+        if self.is_primary:
+            ProductImage.objects.filter(
+                product=self.product, is_primary=True
+            ).exclude(pk=self.pk).update(is_primary=False)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+
+        if self.image:
+            if os.path.isfile(self.image.path):
+                os.remove(self.image.path)
+        super().delete(*args, **kwargs)
 
 
 
@@ -244,7 +289,7 @@ class Payment(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="payments")
     payment_type = models.CharField(max_length=100, db_comment="Reference to the payment method (credit card, boleto, etc)")
     payment_sequential= models.IntegerField(db_comment="a customer may pay an order with more than one payment method. If he does so, a sequence will be created to")
-    payment_timestamp = models.DateTimeField(db_comment="Timestamp when the payment was made")
+    payment_timestamp = models.DateTimeField(null=False,db_comment="Timestamp when the payment was made")
     payment_installments= models.IntegerField(null=True, blank=True, db_comment="Number of installments chosen by the customer")
     payment_value= models.DecimalField(max_digits=10, decimal_places=2, db_comment="transaction value")
 
@@ -270,8 +315,8 @@ class Review(models.Model):
     )
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="reviews")
     review_score = models.IntegerField(db_comment="Score given by the customer in the review (1 to 5)")
-    review_comment_title = models.CharField(max_length=255, db_comment="Title of the review comment")
-    review_comment_message = models.TextField(db_comment="Message of the review comment")
+    review_comment_title = models.CharField(max_length=255,blank=True, db_comment="Title of the review comment")
+    review_comment_message = models.TextField(blank=True, db_comment="Message of the review comment")
     review_creation_date = models.DateTimeField(db_comment="Timestamp when the review was created")
     review_answer_timestamp = models.DateTimeField(null=True, blank=True, db_comment="Timestamp when the review was answered by the seller")
     class Meta:
@@ -288,8 +333,8 @@ class Cart(models.Model):
         db_comment="Unique identifier for the cart"
     )
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="carts")
-    created_at = models.DateTimeField(db_comment="Timestamp when the cart was created")
-    updated_at = models.DateTimeField(null=True, blank=True, db_comment="Timestamp when the cart was updated")
+    created_at = models.DateTimeField(auto_now_add=True,db_comment="Timestamp when the cart was created")
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True, db_comment="Timestamp when the cart was updated")
     cart_total_amount = models.DecimalField(max_digits=10, decimal_places=2, db_comment="Total amount of the cart")
 
     class Meta:
