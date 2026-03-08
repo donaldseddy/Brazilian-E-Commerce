@@ -77,3 +77,61 @@ pour pouvoir automatiser l’import des données et le remplissage automatique d
     },
     
     ```
+    
+
+## Problème lors de l’importation des csv
+
+lors des test je me suis rendu compte que Django a besoin de vraies données pour tester les mock en clé étrangère ne pas pas
+
+`FK Django → on a besoin d'une vraie Category en DB.MagicMock() est rejeté avec "must be a Category instance"`
+
+du coup je cree une instance de categorie 
+
+```python
+    def setUp(self):
+        self.cat      = make_category("perfumaria")
+        self.fallback = Category.objects.create(
+            product_category_name=UNCATEGORIZED_SLUG,
+            product_category_name_english="Uncategorized",
+        )
+        self.cats = {
+            "perfumaria":     self.cat,
+            UNCATEGORIZED_SLUG: self.fallback,
+        }
+```
+
+il faut noter que étant donne que dans produit il y avait 3 types de problème que j'ai fixer 
+
+1. certain produit ont des catégories non existante
+2. certain produit on la case catégories vide je créer une catégorie `Uncategorized`
+3. certain sont bon
+
+## Batch et Dry
+
+### Pourquoi on utilise `batch_size` en Data Engineering
+
+Un **batch** correspond au **nombre d’éléments traités en une fois**.
+
+### Pourquoi on utilise `dry_run`
+
+ permet **de tester le script sans faire de changements réels**
+
+vérifier ce que le script va faire
+
+ éviter de casser la base de données
+
+ tester la logique
+
+Sans modifier les données.
+
+```python
+if dry_run:
+	print("User would be deleted:", user_id)
+else:
+	delete_user(user_id)
+```
+
+| Option | Rôle |
+| --- | --- |
+| `batch_size` | traiter les données par lot |
+| `dry_run` | tester sans modifier |
