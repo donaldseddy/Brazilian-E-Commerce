@@ -5,9 +5,8 @@ from ..views.views import (
     CategoryListView, ProductListView, ProductDetailView,
     SellerProductView,
     CartView,
-    OrderListView, OrderDetailView,
-    CreatePaymentIntentView, ConfirmPaymentView, StripeWebhookView,
-    ReviewView, ProductImageUploadView,ProductImageUploadView, ProductImageDetailView,
+    OrderListView, OrderDetailView, StripeWebhookView,
+    ReviewView, ProductImageUploadView,ProductImageUploadView, ProductImageDetailView,CreateCheckoutSessionView,
 )
 
 urlpatterns = [
@@ -36,9 +35,10 @@ urlpatterns = [
     path("orders/<uuid:order_id>/", OrderDetailView.as_view()),
 
     # ── Paiement ──────────────────────────────────────────────────
-    path("payments/create-intent/", CreatePaymentIntentView.as_view()),
-    path("payments/confirm/",       ConfirmPaymentView.as_view()),
+
     path("payments/webhook/",       StripeWebhookView.as_view()),
+    path("payments/create-checkout-session/", CreateCheckoutSessionView.as_view(),),
+
 
     # ── Reviews ───────────────────────────────────────────────────
     path("reviews/",                ReviewView.as_view()),

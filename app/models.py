@@ -5,24 +5,14 @@ from django.contrib.gis.db.models import PointField
 from django.contrib.gis.geos import Point
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.auth.models import AbstractUser
-from django.utils.text import slugify
 import os
+from utils import product_image_path
 
 
 
-def product_image_path(instance, filename):
-    """
-    Génère un chemin propre : products/<product_id>/<slug_filename>
-    Ex: products/abc123/photo-1.jpg
-    """
-    ext      = filename.split(".")[-1].lower()
-    basename = slugify(os.path.splitext(filename)[0])
-    return f"products/{instance.product.product_id}/{basename}.{ext}"
-# Create your models here.
-
-
-
-
+#────────────────────────────────────────────────────────
+# Models.
+#────────────────────────────────────────────────────────
 
 
 class Geolocation(models.Model):
@@ -184,7 +174,7 @@ class Product(models.Model):
         Category, on_delete=models.CASCADE, related_name="products"
     )
 
-    product_name=models.CharField(max_length=120, blank=True)
+    product_name=models.CharField(max_length=120, blank=True, default="", db_comment="product name")
     product_name_length = models.PositiveIntegerField(null=True,
         blank=True)
     product_description = models.IntegerField(db_comment="number of characters extracted from the product description.")

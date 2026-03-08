@@ -241,6 +241,7 @@ ACCOUNT_AUTHENTICATION_METHOD = "email"
 # ✅ Nouvelle syntaxe allauth
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
-
 STRIPE_SECRET_KEY    = config("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET")
+STRIPE_CURRENCY = "brl"
+FRONTEND_URL = config("FRONTEND_URL")

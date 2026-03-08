@@ -11,25 +11,22 @@ Stratégie catégories (ruptures fixes) :
 from __future__ import annotations
 
 import logging
-import uuid
 from dataclasses import dataclass, field
 from typing import Any
-
-import pandas as pd
 from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 from faker import Faker
 from tqdm import tqdm
-
+from utils import normalize_uuid, read_csv, to_int, to_str, parse_dt
 from app.models import (
     Category, Customer, Geolocation, Order, OrderItem,
     Payment, Product, Review, Seller, User,
 )
 
 logger = logging.getLogger(__name__)
-fake   = Faker("pt_BR")
+fake   = Faker("pt_BR") # donnees fictives propres au bresil (ex: noms, villes, etc.) portugaises
 
 try:
     from utils import PATH_DATA
@@ -38,6 +35,8 @@ except ImportError:
 
 # Slug de la catégorie fallback — ne jamais changer après la 1ère migration
 UNCATEGORIZED_SLUG = "__uncategorized__"
+
+
 
 
 # ─── Stats ───────────────────────────────────────────────────────────────────
@@ -64,54 +63,7 @@ class ImportStats:
         )
 
 
-# ─── Utilitaires purs ────────────────────────────────────────────────────────
-def normalize_uuid(value: Any) -> uuid.UUID | None:
-    if value is None:
-        return None
-    try:
-        return uuid.UUID(str(value).strip())
-    except (ValueError, AttributeError):
-        return None
-
-
-def to_str(value: Any, default: str = "") -> str:
-    if value is None:
-        return default
-    s = str(value).strip()
-    return default if s.lower() == "nan" else s
-
-
-def to_int(value: Any) -> int | None:
-    try:
-        v = float(value)
-        return None if pd.isna(v) else int(v)
-    except (TypeError, ValueError):
-        return None
-
-
-def parse_dt(value: Any) -> Any:
-    if value is None:
-        return None
-    try:
-        if pd.isna(value):
-            return None
-    except (TypeError, ValueError):
-        pass
-    try:
-        ts = pd.to_datetime(value, utc=True)
-        return ts.to_pydatetime() if not pd.isna(ts) else None
-    except Exception:
-        return None
-
-
-def read_csv(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8-sig")
-    df.columns = df.columns.str.strip()
-    df = df.fillna("")
-    return df
-
-
-# ─── Command ─────────────────────────────────────────────────────────────────
+#─── Command ─────────────────────────────────────────────────────────────────
 class Command(BaseCommand):
     help = "Import les CSV Olist dans PostgreSQL via le nouveau modèle Django."
 
@@ -161,7 +113,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("\n✓ Import terminé."))
 
     # ─────────────────────────────────────────────────────────────────────────
-    # CATÉGORIES — + création fallback
+    # CATÉGORIES
     # ─────────────────────────────────────────────────────────────────────────
     @transaction.atomic
     def import_categories(self, path: str) -> ImportStats:
@@ -178,8 +130,6 @@ class Command(BaseCommand):
             self._bulk_import(Category, objs, self.batch)
 
             # ── Catégorie fallback (idempotent) ──────────────────────────────
-            # Couvre les 610 produits sans catégorie ET les 2 noms absents de la
-            # translation (pc_gamer, portateis_cozinha_e_preparadores_de_alimentos)
             fallback, created = Category.objects.get_or_create(
                 product_category_name = UNCATEGORIZED_SLUG,
                 defaults = {"product_category_name_english": "Uncategorized"},
@@ -206,7 +156,7 @@ class Command(BaseCommand):
             return None
 
     # ─────────────────────────────────────────────────────────────────────────
-    # PRODUITS — résolution de catégorie en 3 niveaux
+    # PRODUITS
     # ─────────────────────────────────────────────────────────────────────────
     @transaction.atomic
     def import_products(self, path: str) -> ImportStats:
@@ -234,7 +184,7 @@ class Command(BaseCommand):
         if not uid:
             stats.record_error(f"Product UUID invalide: {row.product_id}")
             return None
-
+        product_name = to_str(row.product_name)
         weight = to_int(row.product_weight_g)
         height = to_int(row.product_height_cm)
         if weight is None or height is None:
@@ -268,6 +218,7 @@ class Command(BaseCommand):
             return Product(
                 product_id          = uid,
                 category            = category,
+                product_name        = product_name,
                 product_name_length = to_int(getattr(row, "product_name_lenght",
                                                getattr(row, "product_name_length", None))),
                 product_description = to_int(getattr(row, "product_description_lenght",

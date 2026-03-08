@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from rest_framework_simplejwt.tokens import RefreshToken
 from .models import (
     User, Customer, Seller, Category, Product,
     Order, OrderItem, Payment, Review, Cart, CartItem, ProductImage
@@ -68,7 +67,7 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Product
         fields = [
-            "product_id", "category", "category_name",
+            "product_id","product_name", "category", "category_name",
             "product_name_length", "product_description", "product_photo",
             "product_weight_g", "product_length_cm", "product_height_cm",
             "product_width_cm", "seller_id", "created_at",
@@ -117,12 +116,15 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Product
         fields = [
-            "product_id", "category", "category_name",
+            "product_id","product_name", "category", "category_name",
             "product_weight_g", "product_length_cm",
             "product_height_cm", "product_width_cm",
             "product_photo", "primary_image", "all_images",
             "created_at",
         ]
+        extra_kwargs = {
+            "product_name": {"required": True, "allow_blank": False},
+        }
 
     def get_primary_image(self, obj):
         request = self.context.get("request")

@@ -11,9 +11,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import get_object_or_404
 from rest_framework.parsers  import MultiPartParser, FormParser
-
-
-
+from rest_framework.permissions import IsAuthenticated
+from core.settings.base_settings import STRIPE_SECRET_KEY, STRIPE_CURRENCY, FRONTEND_URL
 from ..models import (
     User, Customer, Seller, Category, Product,
     Order, OrderItem, Payment, Review, Cart, CartItem,ProductImage
@@ -130,6 +129,7 @@ class ProductListView(APIView):
         if search:
             qs = qs.filter(
                 category__product_category_name_english__icontains=search
+
             )
 
         return Response(ProductSerializer(qs[:50], many=True).data)
@@ -434,105 +434,123 @@ class OrderDetailView(APIView):
 # PAIEMENT STRIPE
 # ─────────────────────────────────────────────────────────────────────────────
 
-class CreatePaymentIntentView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+stripe.api_key = STRIPE_SECRET_KEY
+
+
+class CreateCheckoutSessionView(APIView):
+    """
+    POST /payments/create-checkout-session/
+    Body : { "order_id": "uuid" }
+    Retourne : { "url": "https://checkout.stripe.com/..." }
+    """
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        order_id  = request.data.get("order_id")
-        p_type    = request.data.get("payment_type", "credit_card")
-        installs  = int(request.data.get("installments", 1))
+        order_id = request.data.get("order_id")
+        if not order_id:
+            return Response({"error": "order_id requis."}, status=400)
 
-        customer = get_customer(request.user)
+        # Récupère la commande
         try:
-            order = Order.objects.get(order_id=order_id, customer=customer)
+            order = Order.objects.prefetch_related("items__product").get(
+                order_id=order_id,
+                customer__user=request.user,
+            )
         except Order.DoesNotExist:
             return Response({"error": "Commande introuvable."}, status=404)
 
-        total_cent = int(
-            sum(i.order_item_price + i.order_item_freight_value
-                for i in order.order_items.all()) * 100
-        )
-        if total_cent <= 0:
-            return Response({"error": "Montant invalide."}, status=400)
+        if order.paid:
+            return Response({"error": "Commande déjà payée."}, status=400)
 
-        intent = stripe.PaymentIntent.create(
-            amount   = total_cent,
-            currency = "brl",
-            metadata = {
-                "order_id":     str(order_id),
-                "customer_id":  str(customer.customer_id),
-                "payment_type": p_type,
-                "installments": installs,
-            },
-        )
-        return Response({
-            "client_secret": intent.client_secret,
-            "amount":        total_cent / 100,
-        })
+        # Construit les line_items Stripe à partir des articles
+        line_items = []
+        for item in order.items.all():
+            line_items.append({
+                "price_data": {
+                    "currency":     STRIPE_CURRENCY,
+                    "unit_amount":   int(float(item.price) * 100),  # en centimes
+                    "product_data":  {
+                        "name": (
+                            item.product.product_name
+                            or f"Produit #{str(item.product.product_id)[:8].upper()}"
+                        ),
+                    },
+                },
+                "quantity": item.quantity,
+            })
 
-
-class ConfirmPaymentView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        intent_id = request.data.get("payment_intent_id")
-        order_id  = request.data.get("order_id")
-
-        customer = get_customer(request.user)
-        try:
-            order = Order.objects.get(order_id=order_id, customer=customer)
-        except Order.DoesNotExist:
-            return Response({"error": "Commande introuvable."}, status=404)
+        # Fallback si pas d'articles (commande avec total fixe)
+        if not line_items:
+            line_items = [{
+                "price_data": {
+                    "currency":     settings.STRIPE_CURRENCY,
+                    "unit_amount":  int(float(order.total or 99.90) * 100),
+                    "product_data": {"name": f"Commande #{str(order.order_id)[:8].upper()}"},
+                },
+                "quantity": 1,
+            }]
 
         try:
-            intent = stripe.PaymentIntent.retrieve(intent_id)
+            session = stripe.checkout.Session.create(
+                payment_method_types=["card"],
+                line_items=line_items,
+                mode="payment",
+                # Stripe redirige ici après paiement réussi
+                success_url=(
+                    f"{settings.FRONTEND_URL}/paiement/success"
+                    f"?session_id={{CHECKOUT_SESSION_ID}}"
+                    f"&order_id={order.order_id}"
+                ),
+                # Stripe redirige ici si l'utilisateur annule
+                cancel_url=(
+                    f"{settings.FRONTEND_URL}/paiement/cancel"
+                    f"?order_id={order.order_id}"
+                ),
+                metadata={
+                    "order_id": str(order.order_id),
+                    "user_id":  str(request.user.pk),
+                },
+                # Pré-remplit l'email sur la page Stripe
+                customer_email=request.user.email,
+            )
         except stripe.error.StripeError as e:
-            return Response({"error": str(e)}, status=400)
+            return Response({"error": str(e.user_message)}, status=400)
 
-        if intent.status != "succeeded":
-            return Response({"error": f"Statut : {intent.status}"}, status=400)
-
-        payment = Payment.objects.create(
-            order=order,
-            payment_type=intent.metadata.get("payment_type", "credit_card"),
-            payment_sequential=order.payments.count() + 1,
-            payment_installments=int(intent.metadata.get("installments", 1)),
-            payment_value=intent.amount / 100,
-            payment_timestamp=timezone.now(),
-        )
-        order.order_status = "approved"
-        order.save()
-
-        return Response(PaymentSerializer(payment).data, status=201)
+        return Response({"url": session.url, "session_id": session.id})
 
 
 @method_decorator(csrf_exempt, name="dispatch")
 class StripeWebhookView(APIView):
-    permission_classes     = [permissions.AllowAny]
-    authentication_classes = []
+    """
+    POST /payments/webhook/
+    Stripe envoie les événements ici.
+    NE PAS mettre IsAuthenticated — Stripe n'envoie pas de token JWT.
+    """
 
     def post(self, request):
+        payload   = request.body
+        sig_header = request.META.get("HTTP_STRIPE_SIGNATURE", "")
+
         try:
             event = stripe.Webhook.construct_event(
-                request.body,
-                request.META.get("HTTP_STRIPE_SIGNATURE", ""),
-                settings.STRIPE_WEBHOOK_SECRET,
+                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
             )
-        except Exception:
+        except (ValueError, stripe.error.SignatureVerificationError):
             return HttpResponse(status=400)
 
-        obj      = event["data"]["object"]
-        order_id = obj.get("metadata", {}).get("order_id")
+        # ── Paiement réussi ────────────────────────────────────────────────────
+        if event["type"] == "checkout.session.completed":
+            session  = event["data"]["object"]
+            order_id = session.get("metadata", {}).get("order_id")
 
-        if order_id:
-            status_map = {
-                "payment_intent.succeeded":       "approved",
-                "payment_intent.payment_failed":  "failed",
-                "charge.refunded":                "refunded",
-            }
-            new_status = status_map.get(event["type"])
-            if new_status:
-                Order.objects.filter(order_id=order_id).update(order_status=new_status)
+            if order_id:
+                try:
+                    order = Order.objects.get(order_id=order_id)
+                    order.paid         = True
+                    order.order_status = "approved"
+                    order.save(update_fields=["paid", "order_status"])
+                except Order.DoesNotExist:
+                    pass
 
         return HttpResponse(status=200)
 

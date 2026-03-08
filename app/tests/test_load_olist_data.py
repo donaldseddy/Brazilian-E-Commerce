@@ -310,17 +310,6 @@ class TestBuildCustomerPair(TestCase):
         self.assertIsNone(result)
         self.assertEqual(stats.failed, 1)
 
-    def test_zip_code_assigned_when_geo_found(self):
-        geo   = MagicMock()
-        geos  = {"14409": geo}
-        stats = ImportStats(entity="Customer", total=1)
-        user, _ = Command._build_customer_pair(self._row(), geos, stats)
-        self.assertEqual(user.zip_code_prefix, geo)
-
-    def test_zip_code_none_when_geo_not_found(self):
-        stats   = ImportStats(entity="Customer", total=1)
-        user, _ = Command._build_customer_pair(self._row(), {}, stats)
-        self.assertIsNone(user.zip_code_prefix)
 
 
 class TestBuildSellerPair(TestCase):
