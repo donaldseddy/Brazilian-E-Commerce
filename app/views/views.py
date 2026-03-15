@@ -11,7 +11,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import get_object_or_404
 from rest_framework.parsers  import MultiPartParser, FormParser
-from rest_framework.permissions import IsAuthenticated
 from core.settings.base_settings import STRIPE_SECRET_KEY, STRIPE_CURRENCY, FRONTEND_URL
 from ..models import (
     User, Customer, Seller, Category, Product,
@@ -23,7 +22,7 @@ from ..serializers import (
     CartSerializer, CartItemSerializer,
     OrderSerializer, PaymentSerializer, ReviewSerializer,ProductImageSerializer,
 )
-
+from rest_framework.permissions import IsAuthenticated
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -129,7 +128,6 @@ class ProductListView(APIView):
         if search:
             qs = qs.filter(
                 category__product_category_name_english__icontains=search
-
             )
 
         return Response(ProductSerializer(qs[:50], many=True).data)

@@ -24,6 +24,7 @@ from app.models import (
     Category, Customer, Geolocation, Order, OrderItem,
     Payment, Product, Review, Seller, User,
 )
+from django.db.models import Avg
 
 logger = logging.getLogger(__name__)
 fake   = Faker("pt_BR") # donnees fictives propres au bresil (ex: noms, villes, etc.) portugaises
@@ -35,7 +36,7 @@ except ImportError:
 
 # Slug de la catégorie fallback — ne jamais changer après la 1ère migration
 UNCATEGORIZED_SLUG = "__uncategorized__"
-
+price_map = {}
 
 
 
@@ -229,6 +230,7 @@ class Command(BaseCommand):
                 product_length_cm   = to_int(row.product_length_cm),
                 product_height_cm   = height,
                 product_width_cm    = to_int(row.product_width_cm) or 0,
+                product_price       =price_map.get(uid)
             )
         except Exception as e:
             stats.record_error(f"Product {uid}: {e}")
@@ -454,7 +456,23 @@ class Command(BaseCommand):
             created        = self._bulk_import(OrderItem, objs, self.batch)
             stats.imported = created
             stats.skipped  = stats.total - stats.failed - created
+
+            # Calcule la moyenne des order_item_price par produit et l'écrit dans Product.price — appelé après import_order_items.
+            price_map = {
+                row["product_id"]: row["avg"]
+                for row in OrderItem.objects
+                .values("product_id")
+                .annotate(avg=Avg("order_item_price"))
+            }
+            to_update = []
+            for product in Product.objects.filter(product_id__in=price_map):
+                product.price = price_map[product.product_id]
+                to_update.append(product)
+            Product.objects.bulk_update(to_update, ["product_price"], batch_size=self.batch)
+            self.stdout.write(f"  Prix mis à jour : {len(to_update)} produits")
+
         return stats
+
 
     @staticmethod
     def _build_order_item(row, orders, products, sellers, stats) -> OrderItem | None:

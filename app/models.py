@@ -178,6 +178,8 @@ class Product(models.Model):
     product_name_length = models.PositiveIntegerField(null=True,
         blank=True)
     product_description = models.IntegerField(db_comment="number of characters extracted from the product description.")
+    product_price = models.DecimalField(max_digits=10,null=True, decimal_places=2, db_comment="product price")
+    product_stock = models.IntegerField(null=True,db_comment="product stock")
     product_photo = models.IntegerField(db_comment="number of product published photos")
     product_weight_g = models.IntegerField(db_comment="product weight in grams")
     product_length_cm = models.IntegerField(null=True, blank=True,db_comment="product length in centimeters")
