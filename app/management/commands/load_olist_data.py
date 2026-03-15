@@ -13,18 +13,28 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from typing import Any
+
 from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import Avg
 from django.utils import timezone
 from faker import Faker
 from tqdm import tqdm
-from utils import normalize_uuid, read_csv, to_int, to_str, parse_dt
+
 from app.models import (
-    Category, Customer, Geolocation, Order, OrderItem,
-    Payment, Product, Review, Seller, User,
+    Category,
+    Customer,
+    Geolocation,
+    Order,
+    OrderItem,
+    Payment,
+    Product,
+    Review,
+    Seller,
+    User,
 )
-from django.db.models import Avg
+from utils import normalize_uuid, parse_dt, read_csv, to_int, to_str
 
 logger = logging.getLogger(__name__)
 fake   = Faker("pt_BR") # donnees fictives propres au bresil (ex: noms, villes, etc.) portugaises
@@ -483,14 +493,18 @@ class Command(BaseCommand):
         product = products.get(str(pid)) if pid else None
         seller  = sellers.get(str(sid))  if sid else None
         if not order:
-            stats.record_error(f"OrderItem: order {row.order_id} introuvable"); return None
+            stats.record_error(f"OrderItem: order {row.order_id} introuvable")
+            return None
         if not product:
-            stats.record_error(f"OrderItem order {oid}: product {row.product_id} introuvable"); return None
+            stats.record_error(f"OrderItem order {oid}: product {row.product_id} introuvable")
+            return None
         if not seller:
-            stats.record_error(f"OrderItem order {oid}: seller {row.seller_id} introuvable"); return None
+            stats.record_error(f"OrderItem order {oid}: seller {row.seller_id} introuvable")
+            return None
         seq = to_int(row.order_item_id)
         if seq is None:
-            stats.record_error(f"OrderItem order {oid}: order_item_id non parseable"); return None
+            stats.record_error(f"OrderItem order {oid}: order_item_id non parseable")
+            return None
         try:
             return OrderItem(
                 order                      = order,
@@ -502,7 +516,8 @@ class Command(BaseCommand):
                 shipping_limit_date        = parse_dt(row.shipping_limit_date),
             )
         except Exception as e:
-            stats.record_error(f"OrderItem order {oid} seq {seq}: {e}"); return None
+            stats.record_error(f"OrderItem order {oid} seq {seq}: {e}")
+            return None
 
     # ─────────────────────────────────────────────────────────────────────────
     # PAIEMENTS
@@ -528,10 +543,12 @@ class Command(BaseCommand):
         oid   = normalize_uuid(row.order_id)
         order = orders.get(str(oid)) if oid else None
         if not order:
-            stats.record_error(f"Payment: order {row.order_id} introuvable"); return None
+            stats.record_error(f"Payment: order {row.order_id} introuvable")
+            return None
         seq = to_int(row.payment_sequential)
         if seq is None:
-            stats.record_error(f"Payment order {oid}: payment_sequential invalide"); return None
+            stats.record_error(f"Payment order {oid}: payment_sequential invalide")
+            return None
         try:
             return Payment(
                 order                = order,
@@ -542,7 +559,8 @@ class Command(BaseCommand):
                 payment_timestamp    = timezone.now(),
             )
         except Exception as e:
-            stats.record_error(f"Payment order {oid}: {e}"); return None
+            stats.record_error(f"Payment order {oid}: {e}")
+            return None
 
     # ─────────────────────────────────────────────────────────────────────────
     # AVIS
@@ -567,17 +585,21 @@ class Command(BaseCommand):
     def _build_review(row: Any, orders: dict, stats: ImportStats) -> Review | None:
         rid = normalize_uuid(row.review_id)
         if not rid:
-            stats.record_error(f"Review UUID invalide: {row.review_id}"); return None
+            stats.record_error(f"Review UUID invalide: {row.review_id}")
+            return None
         oid   = normalize_uuid(row.order_id)
         order = orders.get(str(oid)) if oid else None
         if not order:
-            stats.record_error(f"Review {rid}: order {row.order_id} introuvable"); return None
+            stats.record_error(f"Review {rid}: order {row.order_id} introuvable")
+            return None
         score    = to_int(row.review_score)
         creation = parse_dt(row.review_creation_date)
         if score is None:
-            stats.record_error(f"Review {rid}: review_score invalide"); return None
+            stats.record_error(f"Review {rid}: review_score invalide")
+            return None
         if not creation:
-            stats.record_error(f"Review {rid}: review_creation_date invalide"); return None
+            stats.record_error(f"Review {rid}: review_creation_date invalide")
+            return None
         try:
             return Review(
                 review_id               = rid,
@@ -589,7 +611,8 @@ class Command(BaseCommand):
                 review_answer_timestamp = parse_dt(row.review_answer_timestamp),
             )
         except Exception as e:
-            stats.record_error(f"Review {rid}: {e}"); return None
+            stats.record_error(f"Review {rid}: {e}")
+            return None
 
     # ─────────────────────────────────────────────────────────────────────────
     # HELPER

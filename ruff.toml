@@ -1,0 +1,32 @@
+# ruff.toml
+# Linter + formatter Python, remplace flake8 + black + isort
+
+line-length = 100
+target-version = "py310"
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes (imports inutilisés, variables non définies…)
+    "I",   # isort (ordre des imports)
+    "UP",  # pyupgrade (syntaxe Python moderne)
+]
+ignore = [
+    "E501",  # line too long — géré par le formatter
+    "F401",  # imported but unused — trop de faux positifs dans __init__.py
+]
+
+# Dossiers à ignorer
+exclude = [
+    ".venv",
+    "migrations",
+    "__pycache__",
+    "*.pyc",
+]
+
+[lint.per-file-ignores]
+# Les settings peuvent avoir des imports * et des lignes longues
+"core/settings/*.py" = ["F405", "F403"]
+# Les fichiers de test peuvent avoir des assertions sans message
+"**/tests/**" = ["S101"]

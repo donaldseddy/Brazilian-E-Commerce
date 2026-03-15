@@ -1,12 +1,23 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
+
 from ..views.views import (
-    RegisterView, LoginView, LogoutView, MeView,
-    CategoryListView, ProductListView, ProductDetailView,
-    SellerProductView,
     CartView,
-    OrderListView, OrderDetailView, StripeWebhookView,
-    ReviewView, ProductImageUploadView,ProductImageUploadView, ProductImageDetailView,CreateCheckoutSessionView,
+    CategoryListView,
+    CreateCheckoutSessionView,
+    LoginView,
+    LogoutView,
+    MeView,
+    OrderDetailView,
+    OrderListView,
+    ProductDetailView,
+    ProductImageDetailView,
+    ProductImageUploadView,
+    ProductListView,
+    RegisterView,
+    ReviewView,
+    SellerProductView,
+    StripeWebhookView,
 )
 
 urlpatterns = [

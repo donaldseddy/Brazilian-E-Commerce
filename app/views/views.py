@@ -1,29 +1,47 @@
 import stripe
 from django.conf import settings
-from django.http import HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.utils import timezone
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, permissions
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework.parsers  import MultiPartParser, FormParser
-from core.settings.base_settings import STRIPE_SECRET_KEY, STRIPE_CURRENCY, FRONTEND_URL
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework import permissions, status
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from core.settings.base_settings import FRONTEND_URL, STRIPE_CURRENCY, STRIPE_SECRET_KEY
+
 from ..models import (
-    User, Customer, Seller, Category, Product,
-    Order, OrderItem, Payment, Review, Cart, CartItem,ProductImage
+    Cart,
+    CartItem,
+    Category,
+    Customer,
+    Order,
+    OrderItem,
+    Payment,
+    Product,
+    ProductImage,
+    Review,
+    Seller,
+    User,
 )
 from ..serializers import (
-    RegisterSerializer, UserSerializer,
-    CategorySerializer, ProductSerializer, ProductCreateSerializer,
-    CartSerializer, CartItemSerializer,
-    OrderSerializer, PaymentSerializer, ReviewSerializer,ProductImageSerializer,
+    CartItemSerializer,
+    CartSerializer,
+    CategorySerializer,
+    OrderSerializer,
+    PaymentSerializer,
+    ProductCreateSerializer,
+    ProductImageSerializer,
+    ProductSerializer,
+    RegisterSerializer,
+    ReviewSerializer,
+    UserSerializer,
 )
-from rest_framework.permissions import IsAuthenticated
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
@@ -40,12 +58,16 @@ def get_tokens(user):
     }
 
 def get_customer(user):
-    try: return user.customer_profile
-    except Exception: return None
+    try:
+        return user.customer_profile
+    except Exception:
+        return None
 
 def get_seller(user):
-    try: return user.seller_profile
-    except Exception: return None
+    try:
+        return user.seller_profile
+    except Exception:
+        return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -300,13 +322,15 @@ class CartView(APIView):
 
     def get(self, request):
         cart, err = self._cart(request.user)
-        if err: return err
+        if err:
+            return err
         return Response(CartSerializer(cart).data)
 
     def post(self, request):
         """Ajouter / incrémenter un article."""
         cart, err = self._cart(request.user)
-        if err: return err
+        if err:
+            return err
 
         product_id = request.data.get("product_id")
         quantity   = int(request.data.get("quantity", 1))
@@ -336,7 +360,8 @@ class CartView(APIView):
     def delete(self, request):
         """Supprimer un article."""
         cart, err = self._cart(request.user)
-        if err: return err
+        if err:
+            return err
 
         cart_item_id = request.data.get("cart_item_id")
         try:

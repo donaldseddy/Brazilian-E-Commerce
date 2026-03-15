@@ -1,9 +1,19 @@
 from rest_framework import serializers
-from .models import (
-    User, Customer, Seller, Category, Product,
-    Order, OrderItem, Payment, Review, Cart, CartItem, ProductImage
-)
 
+from .models import (
+    Cart,
+    CartItem,
+    Category,
+    Customer,
+    Order,
+    OrderItem,
+    Payment,
+    Product,
+    ProductImage,
+    Review,
+    Seller,
+    User,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AUTH
@@ -58,28 +68,6 @@ class CategorySerializer(serializers.ModelSerializer):
                   "parent_category"]
 
 
-class ProductSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(
-        source="category.product_category_name_english", read_only=True
-    )
-    seller_id = serializers.SerializerMethodField()
-
-    class Meta:
-        model  = Product
-        fields = [
-            "product_id","product_name", "category", "category_name",
-            "product_name_length", "product_description", "product_photo",
-            "product_weight_g", "product_length_cm", "product_height_cm",
-            "product_width_cm", "seller_id", "created_at",
-        ]
-        read_only_fields = ["product_id", "created_at"]
-
-    def get_seller_id(self, obj):
-        # Retourne le seller_id si le produit est lié à des order_items
-        item = obj.order_items.first()
-        return str(item.seller.seller_id) if item else None
-
-
 class ProductCreateSerializer(serializers.ModelSerializer):
     """Utilisé par le vendeur pour créer un produit."""
     class Meta:
@@ -104,7 +92,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
         return None
 
 
-# Mettre à jour ProductSerializer pour inclure les images
+
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(
         source="category.product_category_name_english", read_only=True

@@ -18,18 +18,24 @@ import uuid
 from django.test import TestCase
 from django.utils import timezone
 
-from utils import normalize_uuid, parse_dt, to_int, to_str
-
 from app.management.commands.load_olist_data import (
     UNCATEGORIZED_SLUG,
     Command,
     ImportStats,
 )
 from app.models import (
-    Category, Customer, Geolocation, Order, OrderItem,
-    Payment, Product, Review, Seller, User,
+    Category,
+    Customer,
+    Geolocation,
+    Order,
+    OrderItem,
+    Payment,
+    Product,
+    Review,
+    Seller,
+    User,
 )
-
+from utils import normalize_uuid, parse_dt, to_int, to_str
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -693,7 +699,8 @@ class TestBuildReview(TestCase):
 
 def _write_csv(content: str) -> str:
     """Écrit un CSV temporaire, retourne le chemin."""
-    import os, tempfile
+    import os
+    import tempfile
     f = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8")
     f.write(content)
     f.close()
@@ -701,7 +708,9 @@ def _write_csv(content: str) -> str:
 
 
 def _cmd() -> Command:
-    c = Command(); c.batch = 500; c.dry = False
+    c = Command()
+    c.batch = 500
+    c.dry = False
     return c
 
 
@@ -755,6 +764,7 @@ class TestImportCategoriesIntegration(TestCase):
         # 2 du CSV + 1 fallback créée automatiquement
         self.assertEqual(Category.objects.count(), 3)
         self.assertTrue(Category.objects.filter(product_category_name=UNCATEGORIZED_SLUG).exists())
+        self.assertEqual(stats.imported, 2)
 
 
 class TestImportCustomersIntegration(TestCase):

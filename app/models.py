@@ -1,14 +1,14 @@
-from django.db import models
-from django.conf import settings
+import os
 import uuid
+
+from django.conf import settings
+from django.contrib.auth.models import AbstractUser
 from django.contrib.gis.db.models import PointField
 from django.contrib.gis.geos import Point
 from django.contrib.postgres.search import SearchVectorField
-from django.contrib.auth.models import AbstractUser
-import os
+from django.db import models
+
 from utils import product_image_path
-
-
 
 #────────────────────────────────────────────────────────
 # Models.

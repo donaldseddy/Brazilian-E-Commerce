@@ -4,7 +4,7 @@ from .base_settings import config
 DEBUG = True
 
 DATABASES = {
-    
+
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': config("DATABASE_NAME"),

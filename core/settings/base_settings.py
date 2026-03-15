@@ -12,12 +12,11 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 
 import os
+from datetime import timedelta
 from pathlib import Path
-from decouple import Config, RepositoryEnv, config as conf
-from pathlib import Path
-from utils import PATH_DATA
 
-
+from decouple import Config, RepositoryEnv
+from decouple import config as conf
 
 try:
     if conf('DJANGO_SETTINGS_MODULE') == 'core.settings.local':
@@ -192,7 +191,6 @@ SESSION_COOKIE_AGE = 3600          # 1h
 SESSION_COOKIE_HTTPONLY = True
 
 # ── JWT ──────────────────────────────────────────────────────────────────────
-from datetime import timedelta
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME":  timedelta(minutes=30),

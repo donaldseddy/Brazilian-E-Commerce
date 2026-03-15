@@ -1,8 +1,9 @@
-from django.utils.text import slugify
 import os
 import uuid
-import pandas as pd
 from typing import Any
+
+import pandas as pd
+from django.utils.text import slugify
 
 PATH_DATA ='data/'
 
