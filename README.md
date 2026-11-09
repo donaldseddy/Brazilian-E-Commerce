@@ -188,6 +188,14 @@ brazilian-ecommerce/
 
 Based on the **Brazilian E‑Commerce public dataset (Olist‑inspired)**.
 
+### Olist ingestion
+
+The `load_olist_data` management command imports the CSV files from `data/raw/`.
+To launch ingestion by running `python manage.py` without a subcommand, set
+`RUN_OLIST_INGESTION = True` in `manage.py`. It is `False` by default; set it back
+to `False` to disable automatic ingestion. You can also launch it explicitly with
+`python manage.py load_olist_data`.
+
 ---
 
 ## 🔐 Security & Best Practices

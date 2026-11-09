@@ -28,7 +28,6 @@ from app.models import (
     Customer,
     Geolocation,
     Order,
-    OrderItem,
     Payment,
     Product,
     Review,
@@ -94,7 +93,6 @@ def make_seller(email="s@test.com", seller_id_hex: str | None = None) -> Seller:
 # ─────────────────────────────────────────────────────────────────────────────
 # UTILITAIRES PURS
 # ─────────────────────────────────────────────────────────────────────────────
-
 class TestNormalizeUuid(TestCase):
 
     def test_valid_hex_32(self):

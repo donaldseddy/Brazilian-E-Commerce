@@ -116,7 +116,6 @@ class Customer(models.Model):
         User, on_delete=models.CASCADE,
         related_name="customer_profile", null=True, blank=True
     )
-    # FIX : verbose_name doit être une str, pas une liste
     vector = SearchVectorField(verbose_name="customer_name", null=True)
 
     class Meta:
@@ -211,7 +210,6 @@ class ProductImage(models.Model):
         verbose_name_plural = "Product Images"
 
     def save(self, *args, **kwargs):
-        # Si marquée comme principale, retirer les autres
         if self.is_primary:
             ProductImage.objects.filter(
                 product=self.product, is_primary=True
